@@ -12,21 +12,18 @@ def fwhm (x, y, ip=None):
         ip = y.index(max(y))
 
     halfmax = y[ip] / 2.
-    print(ip, x[ip], y[ip], max(y), halfmax)
 
     for i in range(ip, 0, -1):
         if y[i] < halfmax:
             slope = (y[i + 1] - y[i]) / (x[i + 1] - x[i])
             dy = (halfmax - y[i]) / (y[i + 1] - y[i])
             x1 = x[i + 1] - dy / slope
-            print(x1)
             break
     for i in range(ip, len(x), 1):
         if y[i] < halfmax:
             slope = (y[i - 1] - y[i]) / (x[i - 1] - x[i])
             dy = (halfmax - y[i]) / (y[i - 1] - y[i])
             x2 = x[i - 1] - dy / slope
-            print(dy/slope)
             break
 
     return x2 - x1
