@@ -80,6 +80,49 @@ def undulator_power (bfield, length, energy_GeV, current):
 
 
 
+
+def BesselK (nu, x):
+    # Compute the modified bessel function according to eqn 15 of:
+    #   VACLAV O. KOSTROUN
+    #   SIMPLE NUMERICAL EVALUATION OF MODIFIED BESSEL FUNCTIONS Kv(x) OF FRACTIONAL ORDER AND THE INTEGRAL fxKv(rT)dr7
+    #   Nuclear Instruments and Methods 172 (1980) 371-374
+
+    # The interval (0.5 by authros suitable)
+    h = 0.5
+
+    # Required precision of the r-th term.  Authors use 1e-5, we'll use higher
+    epsilon = 1e-15
+
+    # This is the 0-th term
+    RthTerm = np.exp(-x) / 2. * h
+
+    # This is the return value, at the moment only containing the 0-th term
+    K = RthTerm
+
+    # r is the summation index (ie the r-th term)
+    r = 0
+
+    # Continue until the r-th term satisfies the precision requirement
+    # (Prefer to sum from small to large, but ok)
+    while np.any(RthTerm > epsilon):
+
+         # Increment r
+        r += 1
+
+        # Calculate the r-th term
+        RthTerm = np.exp(-x * np.cosh(r * h)) * np.cosh(nu * r * h)
+
+        # Add r-th term to return vvalue
+        K += RthTerm * h
+
+    # Return the value of the modified bessel function
+    return K
+
+
+
+
+
+
 def BesselK_IntegralToInfty (nu, x):
     # Compute the modified bessel function according to eqn 15 of:
     #   VACLAV O. KOSTROUN
@@ -187,4 +230,21 @@ def epu_power_density (bfield, period, length, energy_GeV, current, theta=0):
     N = int(length*2/period)/2.0
 
     return 10.84 * bfield * energy_GeV**4 * current * N * G(K) * FkEPU(K, gamma*theta)
+def get_beff (Z, By, nperiods):
+    """
+    updateme
+    """
 
+    period = np.abs(Z[-1] - Z[0]) / nperiods
+    n = len(By)
+    freqs = np.fft.fftfreq(n)
+    mask = freqs > 0
+
+    fft_vals = np.fft.fft(By)
+    fft_theo = 2 * np.abs(fft_vals/n)
+
+    beff = 0
+    for i in range(0, len(fft_theo[mask])):
+        beff += (fft_theo[mask][i]/(i//nperiods+1))**2
+    beff = np.sqrt(beff)
+    return beff
