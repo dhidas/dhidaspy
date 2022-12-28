@@ -5,7 +5,7 @@ from scipy.integrate import quad
 mrad2Tomm2At100m = (1e-3*100)**2
 
 
-def undulator_K (bfield, period):
+def K (bfield, period):
     """
     Get the K parameter for undulator
 
@@ -15,7 +15,7 @@ def undulator_K (bfield, period):
 
     return 93.36 * bfield * period
 
-def undulator_bfield (K, period):
+def bfield (K, period):
     """
     Get the bfield for undulator
 
@@ -26,7 +26,7 @@ def undulator_bfield (K, period):
 
     return K / (93.36 * period)
 
-def undulator_period (K, bfield):
+def period (K, bfield):
     """
     Get the period for undulator
 
@@ -39,7 +39,7 @@ def undulator_period (K, bfield):
 
 
 
-def undulator_energy (K, period, energy_GeV, harmonic=1):
+def energy (K, period, energy_GeV, harmonic=1):
     """
     Get the energy for a harmoic
 
@@ -52,7 +52,7 @@ def undulator_energy (K, period, energy_GeV, harmonic=1):
     return 9.50 * energy_GeV**2 / ((1 + K**2/2)*period) * harmonic
 
 
-def undulator_K_fromphoton (energy_eV, period, energy_GeV, harmonic=1):
+def K_fromphoton (energy_eV, period, energy_GeV, harmonic=1):
     """
     Get the undulator K needed for specific photon energy
 
@@ -65,7 +65,7 @@ def undulator_K_fromphoton (energy_eV, period, energy_GeV, harmonic=1):
     return (2 * (9.50*energy_GeV**2*harmonic/(energy_eV*period) - 1))**0.5
 
 
-def undulator_power (bfield, length, energy_GeV, current):
+def power (bfield, length, energy_GeV, current):
     """
     Get the power from undulator in Watts
 
@@ -193,7 +193,7 @@ def FkEPU (K, gtheta):
     return 16*K/(7*np.pi*G(K)) * quad(integrand, -np.pi, np.pi)[0]
 
 
-def undulator_power_density (bfield, period, length, energy_GeV, current, theta=0, psi=0):
+def power_density (bfield, period, length, energy_GeV, current, theta=0, psi=0):
     """
     get the undulator power density at any angle in W/rad^2
 
@@ -206,7 +206,7 @@ def undulator_power_density (bfield, period, length, energy_GeV, current, theta=
     psi : float - vertical angle (rad)
     """
 
-    K = undulator_K(bfield, period)
+    K = K(bfield, period)
     gamma = energy_GeV / 0.511e-3
     N = int(length*2/period)/2.0
 
@@ -225,26 +225,39 @@ def epu_power_density (bfield, period, length, energy_GeV, current, theta=0):
     theta : float - horizontal angle (rad)
     """
 
-    K = undulator_K(bfield, period)
+    K = K(bfield, period)
     gamma = energy_GeV / 0.511e-3
     N = int(length*2/period)/2.0
 
     return 10.84 * bfield * energy_GeV**4 * current * N * G(K) * FkEPU(K, gamma*theta)
-def get_beff (Z, By, nperiods):
+
+
+
+def get_beff (Z, By, nperiods=None, debug=False):
     """
-    updateme
+    Get the effective magnetic field
     """
 
-    period = np.abs(Z[-1] - Z[0]) / nperiods
+    # Fourier transform
     n = len(By)
     freqs = np.fft.fftfreq(n)
     mask = freqs > 0
-
     fft_vals = np.fft.fft(By)
     fft_theo = 2 * np.abs(fft_vals/n)
 
+    # If nperiods is not specified, just find the fundamental and scale
+    if nperiods is None:
+        nperiods = np.argmax(fft_theo)
+        if debug: print('nperiods:', nperiods)
+
+    # Sum up the effective field which is sqrt( (b1/1)**2 + (b3/3)**2 ...) 
     beff = 0
-    for i in range(0, len(fft_theo[mask])):
-        beff += (fft_theo[mask][i]/(i//nperiods+1))**2
-    beff = np.sqrt(beff)
-    return beff
+    for i in range(nperiods-1, len(fft_theo[mask]), nperiods*2):
+        # Which harmonic are we
+        h = (i+1)//nperiods
+
+        if debug and h < 15: print(i, h, fft_theo[mask][i])
+
+        beff += (fft_theo[mask][i]/h)**2
+
+    return np.sqrt(beff)
