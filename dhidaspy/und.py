@@ -232,8 +232,7 @@ def epu_power_density (bfield, period, length, energy_GeV, current, theta=0):
     return 10.84 * bfield * energy_GeV**4 * current * N * G(K) * FkEPU(K, gamma*theta)
 
 
-
-def get_beff (Z, By, nperiods=None, debug=False):
+def get_beff (Z, By, nperiods=None, harmonics=False, debug=False):
     """
     Get the effective magnetic field
     """
@@ -247,17 +246,23 @@ def get_beff (Z, By, nperiods=None, debug=False):
 
     # If nperiods is not specified, just find the fundamental and scale
     if nperiods is None:
-        nperiods = np.argmax(fft_theo)
-        if debug: print('nperiods:', nperiods)
+        nperiods = np.argmax(fft_theo[mask]) + 1
+    if debug: print('nperiods:', nperiods)
 
-    # Sum up the effective field which is sqrt( (b1/1)**2 + (b3/3)**2 ...) 
+    # Sum up the effective field which is sqrt( (b1/1)**2 + (b3/3)**2 ...)
     beff = 0
-    for i in range(nperiods-1, len(fft_theo[mask]), nperiods*2):
+    bharmonics = []
+    for i in range(nperiods-1, len(fft_theo[mask])//2, 2*nperiods):
+
         # Which harmonic are we
-        h = (i+1)//nperiods
+        h = (i//nperiods) * 2 + 1
 
         if debug and h < 15: print(i, h, fft_theo[mask][i])
 
         beff += (fft_theo[mask][i]/h)**2
+        bharmonics.append(fft_theo[mask][i])
+
+    if harmonics:
+        return bharmonics
 
     return np.sqrt(beff)
